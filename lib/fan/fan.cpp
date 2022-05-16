@@ -37,13 +37,24 @@ bool Fan::is_on() {
     return _is_on;
 }
 
-bool Fan::operate(int reading) {
-    if(reading < threshold.get_upper_threshold()) {
-        turn_on();
-    } else if(reading > threshold.get_lower_threshold()) {
-        turn_on();
-    } else {
-        turn_off();
+
+bool Fan::is_automatic() {
+    return _is_automatic;
+}
+
+void Fan::set_automatic(bool new_mode) {
+    _is_automatic = new_mode;
+}
+
+bool Fan::auto_operate(int reading) {
+    if(is_automatic()){
+        if(reading > threshold.get_upper_threshold()) {
+            turn_on();
+        } else if(reading < threshold.get_lower_threshold()) {
+            turn_on();
+        } else {
+            turn_off();
+        }
     }
     return is_on();
 }

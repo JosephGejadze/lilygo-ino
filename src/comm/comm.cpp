@@ -18,6 +18,20 @@ static void execute_set_manual_mode() {
     actuators.pump->set_automatic(false);
 }
 
+// TODO: work on this
+static void execute_sync_thresholds() {
+    char msg[32] = {};
+    actuators_t actuators = get_actuators();
+    sprintf(msg, "%d,%d,%d,%d", 
+        actuators.light->get_hours_a_day(),
+        actuators.pump->threshold.get_lower_threshold(),
+        actuators.humi->threshold.get_lower_threshold(),
+        actuators.vent_fan->threshold.get_lower_threshold()
+    );
+    Serial.print("Thresholds: ");
+    Serial.println(msg);
+}
+
 static void execute_manual_turn_on_light() {
     Light* light = get_light();
     if(!light->is_on()) {
@@ -78,13 +92,8 @@ static void execute_manual_turn_off_humi() {
     }
 }
 
-static void execute_auto_set_soil_moisture_threshold(/*char* order,*/ int payload) {
+static void execute_auto_set_soil_moisture_threshold(int payload) {
     Pump* pump = get_pump();
-
-    // std::string order_str(order);
-    // std::string payload_str = order_str.substr(order_str.find("_") + 1, order_str.length());
-    // int new_threshold = atoi(payload_str.c_str());
-
     pump->threshold.set_lower_threshold(payload);
 }
 
@@ -109,15 +118,9 @@ static void execute_auto_set_light_duration(int payload) {
 }
 
 
-ex_status execute_comm_order(char* order) {
+ex_status execute_comm_order(int order_code, int order_payload) {
     bool status = EX_SUCCESS;
-    int order_code = atoi(order);
-
-    // factor out payload extraction here
-    std::string order_str(order);
-    std::string payload_str = order_str.substr(order_str.find("_") + 1, order_str.length());
-    int payload = atoi(payload_str.c_str());
-
+    
     switch(order_code) {
         case COMM_SET_AUTOMATIC_MODE: {
             execute_set_automatic_mode();
@@ -126,6 +129,9 @@ ex_status execute_comm_order(char* order) {
         case COMM_SET_MANUAL_MODE: {
             execute_set_manual_mode();
             break;
+        }
+        case COMM_SYNC_THRESHOLDS: {
+            execute_sync_thresholds();
         }
         case COMM_MANUAL_TURN_ON_LIGHT: {
             execute_manual_turn_on_light();
@@ -159,10 +165,25 @@ ex_status execute_comm_order(char* order) {
             break;
         }
         case COMM_AUTO_SET_SOIL_MOISTURE_THRESHOLD: {
-            execute_auto_set_soil_moisture_threshold(payload);
+            execute_auto_set_soil_moisture_threshold(order_payload);
             break;
         }
-        
+        case COMM_AUTO_SET_AIR_HUMIDITY_THRESHOLD: {
+            execute_auto_set_air_humidity_threshold(order_payload);
+            break;
+        }
+        case COMM_AUTO_SET_CO2_LOWER_THRESHOLD: {
+            execute_auto_set_co2_lower_threshold(order_payload);
+            break;
+        }
+        case COMM_AUTO_SET_CO2_UPPER_THRESHOLD: {
+            execute_auto_set_co2_upper_threshold(order_payload);
+            break;
+        }
+        case COMM_AUTO_SET_LIGHT_DURATION: {
+            execute_auto_set_light_duration(order_payload);
+            break;
+        }        
         default: {
             status = EX_FAILURE;
             break;

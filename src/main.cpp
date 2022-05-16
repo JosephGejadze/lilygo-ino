@@ -33,6 +33,7 @@ void setup_mqtt();
 void printValues();
 void gather_sensor_values();
 void print_sensor_values();
+void mqtt_reconnect();
 
 
 void setup() {
@@ -80,7 +81,21 @@ void loop() {
   gather_sensor_values();
   print_sensor_values();
 
+  if(!WiFi.isConnected()) {
+    Serial.println("Attempting to reconnect to WiFi");
+    WiFi.reconnect();
+  }
+
+  if(!client.connected()) {
+    mqtt_reconnect();
+  }
+
   actuators.pump->auto_operate(sensors.get_soil_moisture());
+  actuators.humi->auto_operate(sensors.get_air_humidity());
+  actuators.vent_fan->auto_operate(sensors.get_co2_content());
+  actuators.light->auto_operate();
+  actuators.circ_fan->toggle();
+
 
   client.publish(MQTT_TOPIC, sensors.get_formatted_message());
   client.loop();
@@ -105,51 +120,64 @@ void setup_wifi() {
       esp_restart();
   }
 
+
   Serial.print("WiFi connect success! IP address: ");
   Serial.println(WiFi.localIP());
 }
 
-void reconnect() {
-  // Loop until we're reconnected
-  // while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect
-    if (client.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      client.publish("outTopic","hello world");
-      // ... and resubscribe
-      client.subscribe("inTopic");
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  // }
+void mqtt_reconnect() {
+  Serial.print("Attempting MQTT connection...");
+  if (client.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
+    Serial.println("connected");
+  } else {
+    Serial.print("failed, rc=");
+    Serial.print(client.state());
+  }
 }
 
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte* bytes, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
   for (int i=0; i<length; i++) {
-    Serial.print((char)payload[i]);
+    Serial.print((char)bytes[i]);
   }
   Serial.println();
-  ex_status status = execute_comm_order((char*)payload);
+
+  char order_code[8] = {};
+  char order_payload[8] = {};
+
+  int delimiter_index = -1;
+
+
+  // Parse the order into order code and payload
+  for(int i=0; i<length; i++) {
+    if(bytes[i] == '_') {
+      delimiter_index = i;
+    } else if(delimiter_index < 0 ) {
+      order_code[i] = bytes[i];
+    } else {
+      order_payload[i - delimiter_index - 1] = bytes[i];
+    }
+  }
+
+  Serial.print("order_code: ");
+  Serial.println(atoi(order_code));
+  Serial.print("order_payload: ");
+  Serial.println(atoi(order_payload));
+
+  ex_status status = execute_comm_order(atoi(order_code), atoi(order_payload));
   if(status == EX_SUCCESS) {
     Serial.print("Executed order ");
     for (int i=0; i<length; i++) {
-      Serial.print((char)payload[i]);
+      Serial.print((char)bytes[i]);
     }
     Serial.println();
   } else {
     Serial.print("Could not execute order ");
     for (int i=0; i<length; i++) {
-      Serial.print((char)payload[i]);
+      Serial.print((char)bytes[i]);
     }
     Serial.println();
   }

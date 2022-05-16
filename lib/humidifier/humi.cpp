@@ -46,11 +46,22 @@ bool Humi::is_on() {
     return _is_on;
 }
 
-bool Humi::operate(int reading) {
-    if(reading < threshold.get_upper_threshold()) {
-        turn_on();
-    } else {
-        turn_off();
+
+bool Humi::is_automatic() {
+    return _is_automatic;
+}
+
+void Humi::set_automatic(bool new_mode) {
+    _is_automatic = new_mode;
+}
+
+bool Humi::auto_operate(int reading) {
+    if(is_automatic()){
+        if(reading < threshold.get_lower_threshold()) {
+            turn_on();
+        } else {
+            turn_off();
+        }
     }
     return is_on();
 }

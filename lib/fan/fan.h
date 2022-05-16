@@ -8,6 +8,7 @@ class Fan
     private:
     int _pin;
     bool _is_on;
+    bool _is_automatic;
 
     public:
     Threshold threshold;
@@ -17,7 +18,9 @@ class Fan
     void turn_off();
     void toggle();
     bool is_on();
-    bool operate(int reading);
+    bool is_automatic();
+    void set_automatic(bool new_mode);
+    bool auto_operate(int reading);
 };
 
 #endif // __FAN__
